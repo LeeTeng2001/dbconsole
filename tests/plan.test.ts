@@ -2,42 +2,28 @@ import { describe, it, expect } from 'vitest'
 import { feature, requiredPlan } from '../src/lib/plan'
 
 describe('feature', () => {
-  it('FREE plan has no gated features', () => {
-    expect(feature('GROUPS', 'FREE')).toBe(false)
-    expect(feature('IAM', 'FREE')).toBe(false)
-    expect(feature('SSO_GOOGLE', 'FREE')).toBe(false)
-    expect(feature('SSO_KEYCLOAK', 'FREE')).toBe(false)
-    expect(feature('SSO_OKTA', 'FREE')).toBe(false)
-    expect(feature('BANNER', 'FREE')).toBe(false)
-    expect(feature('AUDIT_LOG', 'FREE')).toBe(false)
-  })
-
-  it('TEAM plan includes TEAM features', () => {
-    expect(feature('GROUPS', 'TEAM')).toBe(true)
-    expect(feature('IAM', 'TEAM')).toBe(true)
-    expect(feature('SSO_GOOGLE', 'TEAM')).toBe(true)
-    expect(feature('BANNER', 'TEAM')).toBe(true)
-  })
-
-  it('TEAM plan excludes ENTERPRISE features', () => {
-    expect(feature('SSO_KEYCLOAK', 'TEAM')).toBe(false)
-    expect(feature('SSO_OKTA', 'TEAM')).toBe(false)
-    expect(feature('AUDIT_LOG', 'TEAM')).toBe(false)
-  })
-
-  it('ENTERPRISE plan includes all features', () => {
-    expect(feature('GROUPS', 'ENTERPRISE')).toBe(true)
-    expect(feature('IAM', 'ENTERPRISE')).toBe(true)
-    expect(feature('SSO_GOOGLE', 'ENTERPRISE')).toBe(true)
-    expect(feature('SSO_KEYCLOAK', 'ENTERPRISE')).toBe(true)
-    expect(feature('SSO_OKTA', 'ENTERPRISE')).toBe(true)
-    expect(feature('BANNER', 'ENTERPRISE')).toBe(true)
-    expect(feature('AUDIT_LOG', 'ENTERPRISE')).toBe(true)
+  it('all features are unlocked on every plan', () => {
+    const features = [
+      'GROUPS',
+      'IAM',
+      'SSO_GOOGLE',
+      'SSO_KEYCLOAK',
+      'SSO_OKTA',
+      'BANNER',
+      'BRANDING',
+      'AUDIT_LOG',
+    ] as const
+    const plans = ['FREE', 'TEAM', 'ENTERPRISE'] as const
+    for (const f of features) {
+      for (const p of plans) {
+        expect(feature(f, p)).toBe(true)
+      }
+    }
   })
 })
 
 describe('requiredPlan', () => {
-  it('returns minimum plan for each feature', () => {
+  it('returns minimum plan for each feature (metadata preserved)', () => {
     expect(requiredPlan('GROUPS')).toBe('TEAM')
     expect(requiredPlan('IAM')).toBe('TEAM')
     expect(requiredPlan('SSO_GOOGLE')).toBe('TEAM')
@@ -47,4 +33,3 @@ describe('requiredPlan', () => {
     expect(requiredPlan('AUDIT_LOG')).toBe('ENTERPRISE')
   })
 })
-
