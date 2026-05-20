@@ -53,4 +53,15 @@ api_key = "sk-test"
 base_url = "not a url"
 `)).rejects.toThrow('AI provider bad base_url is not a valid URL: not a url')
   })
+
+  it('rejects non-http AI provider base_url schemes', async () => {
+    await expect(loadConfigFromString(`
+[[ai.providers]]
+id = "bad"
+vendor = "openai"
+model = "gpt-4o"
+api_key = "sk-test"
+base_url = "file:///tmp/provider"
+`)).rejects.toThrow('AI provider bad base_url must use http or https: file:///tmp/provider')
+  })
 })
