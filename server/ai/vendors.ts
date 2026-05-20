@@ -29,11 +29,12 @@ export async function generateWithVendor(
   model: string,
   systemPrompt: string | null,  // null on subsequent messages
   userPrompt: string,
-  sessionId: string | null       // null on first message
+  sessionId: string | null,      // null on first message
+  baseUrl?: string
 ): Promise<GenerateResult> {
   switch (vendor) {
     case 'openai': {
-      const client = new OpenAI({ apiKey })
+      const client = new OpenAI({ apiKey, baseURL: baseUrl })
 
       if (!sessionId) {
         // First message: Create conversation
@@ -85,7 +86,7 @@ export async function generateWithVendor(
     case 'anthropic': {
       // Anthropic's Messages API is stateless, so we encode the full conversation
       // history as a base64 JSON session ID to maintain multi-turn context
-      const client = new Anthropic({ apiKey })
+      const client = new Anthropic({ apiKey, baseURL: baseUrl })
 
       // Decode session history (base64 JSON) or start fresh
       interface MessageHistory {
@@ -152,7 +153,10 @@ export async function generateWithVendor(
 
     case 'google': {
       // Google's Interactions API provides server-side session management
-      const client = new GoogleGenAI({ apiKey })
+      const client = new GoogleGenAI({
+        apiKey,
+        httpOptions: baseUrl ? { baseUrl } : undefined,
+      })
 
       if (!sessionId) {
         // First message: Create interaction with system instruction
