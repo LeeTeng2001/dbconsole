@@ -9,11 +9,31 @@ import {
 describe('SQL generators', () => {
   describe('generateSelect', () => {
     it('generates a SELECT statement with LIMIT 100', async () => {
-      const result = await generateSelect('users')
+      const result = await generateSelect('public', 'users')
       expect(result).toBe(`SELECT
   *
 FROM
-  users
+  public.users
+LIMIT
+  100;`)
+    })
+
+    it('quotes mixed-case table names in schema-qualified SELECT', async () => {
+      const result = await generateSelect('public', 'LiteLLM_TableSome')
+      expect(result).toBe(`SELECT
+  *
+FROM
+  public."LiteLLM_TableSome"
+LIMIT
+  100;`)
+    })
+
+    it('quotes unsafe schema names and embedded double quotes', async () => {
+      const result = await generateSelect('Tenant Schema', 'weird"table')
+      expect(result).toBe(`SELECT
+  *
+FROM
+  "Tenant Schema"."weird""table"
 LIMIT
   100;`)
     })
@@ -26,8 +46,8 @@ LIMIT
         { name: 'name', type: 'varchar', nullable: true },
         { name: 'email', type: 'varchar', nullable: false },
       ]
-      const result = await generateInsert('users', columns)
-      expect(result).toBe(`INSERT INTO users (
+      const result = await generateInsert('public', 'users', columns)
+      expect(result).toBe(`INSERT INTO public.users (
   id,
   name,
   email
@@ -40,8 +60,26 @@ VALUES (
     })
 
     it('returns empty string for empty columns', async () => {
-      const result = await generateInsert('users', [])
+      const result = await generateInsert('public', 'users', [])
       expect(result).toBe('')
+    })
+
+    it('quotes reserved words used as identifiers', async () => {
+      const columns = [
+        { name: 'select', type: 'text', nullable: true },
+        { name: 'from', type: 'text', nullable: true },
+      ]
+
+      const result = await generateInsert('public', 'order', columns)
+
+      expect(result).toBe(`INSERT INTO public."order" (
+  "select",
+  "from"
+)
+VALUES (
+  '<select>',
+  '<from>'
+);`)
     })
   })
 
@@ -52,8 +90,8 @@ VALUES (
         { name: 'name', type: 'varchar', nullable: true },
         { name: 'email', type: 'varchar', nullable: false },
       ]
-      const result = await generateUpdate('users', columns, ['id'])
-      expect(result).toBe(`UPDATE users
+      const result = await generateUpdate('public', 'users', columns, ['id'])
+      expect(result).toBe(`UPDATE public.users
 SET
   name = '<name>',
   email = '<email>'
@@ -66,8 +104,8 @@ WHERE
         { name: 'name', type: 'varchar', nullable: true },
         { name: 'email', type: 'varchar', nullable: false },
       ]
-      const result = await generateUpdate('users', columns, [])
-      expect(result).toBe(`UPDATE users
+      const result = await generateUpdate('public', 'users', columns, [])
+      expect(result).toBe(`UPDATE public.users
 SET
   name = '<name>',
   email = '<email>'
@@ -81,8 +119,8 @@ WHERE
         { name: 'role_id', type: 'integer', nullable: false },
         { name: 'created_at', type: 'timestamp', nullable: false },
       ]
-      const result = await generateUpdate('user_roles', columns, ['user_id', 'role_id'])
-      expect(result).toBe(`UPDATE user_roles
+      const result = await generateUpdate('public', 'user_roles', columns, ['user_id', 'role_id'])
+      expect(result).toBe(`UPDATE public.user_roles
 SET
   created_at = '<created_at>'
 WHERE
@@ -91,29 +129,44 @@ WHERE
     })
 
     it('returns empty string for empty columns', async () => {
-      const result = await generateUpdate('users', [], ['id'])
+      const result = await generateUpdate('public', 'users', [], ['id'])
       expect(result).toBe('')
+    })
+
+    it('quotes unsafe columns and primary keys in UPDATE', async () => {
+      const columns = [
+        { name: 'User ID', type: 'integer', nullable: false },
+        { name: 'DisplayName', type: 'text', nullable: true },
+      ]
+
+      const result = await generateUpdate('public', 'Accounts', columns, ['User ID'])
+
+      expect(result).toBe(`UPDATE public."Accounts"
+SET
+  "DisplayName" = '<DisplayName>'
+WHERE
+  "User ID" = '<User ID>';`)
     })
   })
 
   describe('generateDelete', () => {
     it('generates a DELETE statement with PK in WHERE', async () => {
-      const result = await generateDelete('users', ['id'])
-      expect(result).toBe(`DELETE FROM users
+      const result = await generateDelete('public', 'users', ['id'])
+      expect(result).toBe(`DELETE FROM public.users
 WHERE
   id = '<id>';`)
     })
 
     it('uses placeholder comment when no PK', async () => {
-      const result = await generateDelete('users', [])
-      expect(result).toBe(`DELETE FROM users
+      const result = await generateDelete('public', 'users', [])
+      expect(result).toBe(`DELETE FROM public.users
 WHERE
   /* condition */;`)
     })
 
     it('handles composite primary keys', async () => {
-      const result = await generateDelete('user_roles', ['user_id', 'role_id'])
-      expect(result).toBe(`DELETE FROM user_roles
+      const result = await generateDelete('public', 'user_roles', ['user_id', 'role_id'])
+      expect(result).toBe(`DELETE FROM public.user_roles
 WHERE
   user_id = '<user_id>'
   AND role_id = '<role_id>';`)
