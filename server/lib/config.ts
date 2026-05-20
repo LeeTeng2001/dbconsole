@@ -610,27 +610,26 @@ export async function loadConfigFromString(content: string): Promise<void> {
   }
 
   // Resolve license → plan tier and maxUsers before assigning config
-  let plan: PlanTier = 'FREE'
+  let plan: PlanTier = 'ENTERPRISE'
   let licenseExpiry: number | undefined
-  let licenseMaxUsers = 1
+  let licenseMaxUsers = Number.MAX_SAFE_INTEGER
   let licenseEmail: string | undefined
   if (license) {
     const result = await checkLicense(license)
-    plan = result.plan
+    // Preserve license metadata if present, but never downgrade plan or seat cap.
     licenseExpiry = result.expiry
-    licenseMaxUsers = result.maxUsers
     licenseEmail = result.email
+    if (result.plan !== 'FREE') {
+      plan = result.plan
+    }
+    if (result.maxUsers > licenseMaxUsers) {
+      licenseMaxUsers = result.maxUsers
+    }
   }
 
   loadedConfig = { external_url, license, banner, branding, users, groups, labels, connections, auth, ai, iam, plan, licenseExpiry, licenseMaxUsers, licenseEmail }
 
-  // Validate user count against license limit
-  if (auth) {
-    const limit = licenseMaxUsers
-    if (users.length > limit) {
-      throw new Error(`Too many [[users]] entries: ${users.length} configured but current license only allows ${limit}. Remove users or upgrade at https://docs.pgconsole.com/configuration/license#purchasing-a-license`)
-    }
-  }
+  // Seat limit disabled: all features unlocked.
 }
 
 export function getLabels(): LabelConfig[] {
@@ -715,7 +714,8 @@ export function getLicense(): string | undefined {
 }
 
 export function getPlan(): PlanTier {
-  return loadedConfig.plan
+  // All features unlocked: report ENTERPRISE regardless of license.
+  return 'ENTERPRISE'
 }
 
 export function getLicenseExpiry(): number | undefined {
@@ -723,7 +723,8 @@ export function getLicenseExpiry(): number | undefined {
 }
 
 export function getLicenseMaxUsers(): number {
-  return loadedConfig.licenseMaxUsers
+  // All features unlocked: no seat cap.
+  return Number.MAX_SAFE_INTEGER
 }
 
 export function getLicenseEmail(): string | undefined {
