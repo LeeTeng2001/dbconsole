@@ -43,3 +43,59 @@ export function applyOverridesToRow(
   }
   return out
 }
+
+export type ColumnValueSummary =
+  | { kind: 'same'; value: unknown }
+  | { kind: 'multiple' }
+  | { kind: 'allNull' }
+
+/**
+ * Compare a column's value across N rows.
+ *
+ * - 'allNull'  — every row has null in this column.
+ * - 'same'     — every row has the same value (compared structurally for
+ *                objects/arrays via JSON.stringify; works fine for the JSON
+ *                values pg returns).
+ * - 'multiple' — rows differ, OR the input is empty (defensive default).
+ *
+ * `undefined` and missing keys are treated identically.
+ */
+export function computeColumnValueSummary(
+  rows: Record<string, unknown>[],
+  columnName: string,
+): ColumnValueSummary {
+  if (rows.length === 0) return { kind: 'multiple' }
+
+  const first = rows[0][columnName]
+  const firstIsNull = first === null
+  let allNull = firstIsNull
+
+  for (let i = 1; i < rows.length; i++) {
+    const v = rows[i][columnName]
+    if (v === null) {
+      if (!firstIsNull) return { kind: 'multiple' }
+      continue
+    }
+    if (firstIsNull) return { kind: 'multiple' }
+    allNull = false
+    if (!structurallyEqual(first, v)) return { kind: 'multiple' }
+  }
+
+  if (allNull) return { kind: 'allNull' }
+  return { kind: 'same', value: first }
+}
+
+function structurallyEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true
+  if (a === null || b === null) return false
+  if (typeof a !== 'object' || typeof b !== 'object') return false
+  // For pg result values (JSONB returned as parsed objects, arrays, primitives),
+  // JSON.stringify is sufficient. Order-sensitive for objects, which is fine
+  // because pg returns them with stable key order.
+  try {
+    return JSON.stringify(a) === JSON.stringify(b)
+  } catch {
+    return false
+  }
+}
+
