@@ -93,4 +93,18 @@ describe('computeColumnValueSummary', () => {
       { kind: 'same', value: undefined }
     )
   })
+
+  it('compares arrays structurally', () => {
+    expect(computeColumnValueSummary([{ x: [1, 2] }, { x: [1, 2] }], 'x'))
+      .toEqual({ kind: 'same', value: [1, 2] })
+  })
+
+  it('compares Date values structurally (postgres.js timestamps)', () => {
+    expect(
+      computeColumnValueSummary(
+        [{ ts: new Date('2024-01-01T00:00:00Z') }, { ts: new Date('2024-01-01T00:00:00Z') }],
+        'ts',
+      ),
+    ).toEqual({ kind: 'same', value: new Date('2024-01-01T00:00:00Z') })
+  })
 })

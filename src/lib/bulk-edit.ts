@@ -55,7 +55,9 @@ export type ColumnValueSummary =
  * - 'allNull'  — every row has null in this column.
  * - 'same'     — every row has the same value (compared structurally for
  *                objects/arrays via JSON.stringify; works fine for the JSON
- *                values pg returns).
+ *                values the postgres driver returns). Note that timestamp/
+ *                date columns come back as JS Date objects, which JSON.stringify
+ *                handles correctly via ISO strings.
  * - 'multiple' — rows differ, OR the input is empty (defensive default).
  *
  * `undefined` and missing keys are treated identically.
@@ -88,10 +90,14 @@ export function computeColumnValueSummary(
 function structurallyEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true
   if (a === null || b === null) return false
+  if (typeof a === 'bigint' || typeof b === 'bigint') {
+    return typeof a === 'bigint' && typeof b === 'bigint' && a === b
+  }
   if (typeof a !== 'object' || typeof b !== 'object') return false
-  // For pg result values (JSONB returned as parsed objects, arrays, primitives),
-  // JSON.stringify is sufficient. Order-sensitive for objects, which is fine
-  // because pg returns them with stable key order.
+  // For postgres.js result values (JSONB returned as parsed objects, arrays,
+  // primitives, Dates for timestamps), JSON.stringify is sufficient.
+  // Order-sensitive for objects, which is fine because the postgres driver
+  // returns them with stable key order.
   try {
     return JSON.stringify(a) === JSON.stringify(b)
   } catch {
