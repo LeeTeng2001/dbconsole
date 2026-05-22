@@ -17,9 +17,13 @@ export type BulkOverrides = Record<string, BulkOverride>
  *
  * - { kind: 'value' } -> sets the property to that value
  * - { kind: 'null' }  -> sets the property to null
- * - { kind: 'default' } -> sets the property to undefined
- *   (matches existing convention where undefined means "use DEFAULT" in
- *    generateInsertSQL/generateUpdateSQL).
+ * - { kind: 'default' } -> sets the property to undefined.
+ *   This matches the existing convention in generateInsertSQL, which filters
+ *   undefined to emit DEFAULT in INSERT statements. Note that generateUpdateSQL
+ *   currently treats undefined as NULL — bulk-edit "Set DEFAULT" on staged-update
+ *   rows will be handled by callers / a later task that introduces an explicit
+ *   DEFAULT marker if needed. For now, "Set DEFAULT" is most meaningful on
+ *   staged-insert rows.
  *
  * Untouched columns are preserved exactly (including null vs undefined).
  */
