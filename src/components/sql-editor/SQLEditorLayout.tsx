@@ -177,7 +177,7 @@ export function SQLEditorLayout({
     }
 
     // For tables/views, run SELECT query
-    const query = `SELECT * FROM ${schema}.${objectName} LIMIT 100;`
+    const query = await generateSelect(schema, objectName)
 
     // Check if a tab with the same SQL statement already exists
     const existingTab = editorTabs.tabs.find(
